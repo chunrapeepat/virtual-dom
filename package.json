@@ -1,0 +1,15 @@
+{
+  "name": "virtual-dom",
+  "version": "1.0.0",
+  "description": "Build virtual-dom from scratch",
+  "main": "index.js",
+  "scripts": {
+    "compile": "babel index.js --out-file compiled.js"
+  },
+  "author": "chunza2542",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.23.0",
+    "babel-plugin-transform-react-jsx": "^6.23.0"
+  }
+}
