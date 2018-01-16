@@ -25,19 +25,29 @@ function diff(newNode, oldNode) {  //@
 
 //// PATCH
 
+// create element from virtual-dom
 function createElement(node) {
   if (typeof node === 'string') {
     return document.createTextNode(node)
   }
-  return document.createElement(node.type)
+  const el = document.createElement(node.type)
+  setProps(el, node.props)
+  node.children
+    .map(createElement)
+    .forEach(el.appendChild.bind(el))
+  return el
 }
 
-function setProp(target, name, value) { //@
-
+// set dom attribute
+function setProp(target, name, value) {
+  target.setAttribute(name, value)
 }
 
+// loop every props and throw into setProp function
 function setProps(target, props) {
-
+  Object.keys(props).forEach(name => {
+    setProp(target, name, props[name])
+  })
 }
 
 function removeProp(target, name, value) { //@
