@@ -13,7 +13,18 @@ function changed(node1, node2) {
 }
 
 function diffProps(newNode, oldNode) {
-
+  const patches = []
+  const props = Object.assign({}, newNode.props, oldNode.props)
+  Object.keys(props).forEach(name => {
+    const oldVal = oldNode.props[name]
+    const newVal = newNode.props[name]
+    if (!newVal) {
+      patches.push({ type: REMOVE_PROP, name, value: oldVal })
+    } else if (!oldVal || newVal !== oldVal) {
+      patches.push({ type: SET_PROP, name, value: newVal })
+    }
+  })
+  return patches
 }
 
 function diffChildren(newNode, oldNode) {
@@ -45,6 +56,7 @@ function diff(newNode, oldNode) {
     return {
       type: UPDATE,
       children: diffChildren(newNode, oldNode),
+      props: diffProps(newNode, oldNode),
     }
   }
 }
@@ -78,12 +90,24 @@ function setProps(target, props) {
   })
 }
 
-function removeProp(target, name, value) { //@
-
+function removeProp(target, name) {
+  if (name === 'className') {
+    return target.removeAttribute('class')
+  }
+  target.removeAttribute(name)
 }
 
 function patchProps(parent, patches) {
-
+  for (let i = 0; i < patches.length; i++) {
+    const propPatch = patches[i]
+    const {type, name, value} = propPatch
+    if (type === SET_PROP) {
+      setProp(parent, name, value)
+    }
+    if (type === REMOVE_PROP) {
+      removeProp(parent, name)
+    }
+  }
 }
 
 function patch(parent, patches, index = 0) {
@@ -104,7 +128,8 @@ function patch(parent, patches, index = 0) {
       return parent.replaceChild(newEl, el)
     }
     case UPDATE: {
-      const {children} = patches
+      const {children, props} = patches
+      patchProps(el, props)
       for(let i = 0; i < children.length; i++) {
         patch(el, children[i], i)
       }
@@ -124,7 +149,7 @@ function h(type, props, ...children) {
 function view(count) {
   const r = [...Array(count).keys()]
   return (
-    <ul id="cool" className={`my-class-${count % 3}`}>
+    <ul className={`my-class-${count % 3}`}>
       {r.map(n => <li>item {(count * n).toString()}</li>)}
     </ul>
   )
