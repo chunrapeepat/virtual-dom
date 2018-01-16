@@ -1,3 +1,4 @@
+// constant variables
 const CREATE = 'CREATE'
 const REMOVE = 'REMOVE'
 const REPLACE = 'REPLACE'
@@ -5,10 +6,10 @@ const UPDATE = 'UPDATE'
 const SET_PROP = 'SET_PROP'
 const REMOVE_PROP = 'REMOVE PROP'
 
-//// DIFF
-
 function changed(node1, node2) {
-
+  return typeof node1 !== typeof node2 ||
+         typeof node1 === 'string' && node1 !== node2 ||
+         node1.type !== node2.type
 }
 
 function diffProps(newNode, oldNode) {
@@ -16,14 +17,37 @@ function diffProps(newNode, oldNode) {
 }
 
 function diffChildren(newNode, oldNode) {
-
+  const patches = []
+  const patchesLength = Math.max(
+    newNode.children.length,
+    oldNode.children.length,
+  )
+  for (let i = 0; i < patchesLength; i++) {
+    patches[i] = diff(
+      newNode.children[i],
+      oldNode.children[i]
+    )
+  }
+  return patches
 }
 
-function diff(newNode, oldNode) {  //@
-
+function diff(newNode, oldNode) {
+  if (!oldNode) {
+    return {type: CREATE, newNode}
+  }
+  if (!newNode) {
+    return {type: REMOVE}
+  }
+  if (changed(newNode, oldNode)) {
+    return {type: REPLACE, newNode}
+  }
+  if (newNode.type) {
+    return {
+      type: UPDATE,
+      children: diffChildren(newNode, oldNode),
+    }
+  }
 }
-
-//// PATCH
 
 // create element from virtual-dom
 function createElement(node) {
@@ -32,6 +56,7 @@ function createElement(node) {
   }
   const el = document.createElement(node.type)
   setProps(el, node.props)
+  // recursive on element children
   node.children
     .map(createElement)
     .forEach(el.appendChild.bind(el))
@@ -40,6 +65,9 @@ function createElement(node) {
 
 // set dom attribute
 function setProp(target, name, value) {
+  if (name === 'className') {
+    return target.setAttribute('class', value)
+  }
   target.setAttribute(name, value)
 }
 
@@ -59,7 +87,29 @@ function patchProps(parent, patches) {
 }
 
 function patch(parent, patches, index = 0) {
-
+  if (!patches) return
+  const el = parent.childNodes[index]
+  switch (patches.type) {
+    case CREATE: {
+      const {newNode} = patches
+      const newEl = createElement(newNode)
+      return parent.appendChild(newEl)
+    }
+    case REMOVE: {
+      return parent.removeChild(el)
+    }
+    case REPLACE: {
+      const {newNode} = patches
+      const newEl = createElement(newNode)
+      return parent.replaceChild(newEl, el)
+    }
+    case UPDATE: {
+      const {children} = patches
+      for(let i = 0; i < children.length; i++) {
+        patch(el, children[i], i)
+      }
+    }
+  }
 }
 
 function flatten(arr) {
@@ -72,19 +122,24 @@ function h(type, props, ...children) {
 }
 
 function view(count) {
+  const r = [...Array(count).keys()]
   return (
-    <ul id="cool" className="foo">
-      <li>Text 1</li>
-      <li>Text 2</li>
+    <ul id="cool" className={`my-class-${count % 3}`}>
+      {r.map(n => <li>item {(count * n).toString()}</li>)}
     </ul>
   )
 }
 
 function tick(el, count) {
+  const patches = diff(view(count + 1), view(count))
+  patch(el, patches)
 
+  if (count >= 20) return
+  setTimeout(() => tick(el, count + 1) , 500)
 }
 
 function render(el) {
   // create real-dom from virtual-dom and append to element
   el.appendChild(createElement(view(0)))
+  setTimeout(() => tick(el, 0), 500)
 }
